@@ -9,7 +9,37 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build:
+  build_client:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [16.x]
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build and test using node version ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: './client/package-lock.json'
+    - run: npm ci
+      working-directory: './client'
+    - run: npm run build --if-present
+      working-directory: './client'
+#    - run: npm test
+#      working-directory: './client'
+      env:
+        CI: true
+    - name: Create docker container and push to GitHub repository
+      if: success()
+      uses: elgohr/Publish-Docker-Github-Action@v4
+      with:
+        name: alfbo/test-marcus/testclient
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+        registry: ghcr.io
+        workdir: './client'
+  build_api:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -34,7 +64,7 @@ jobs:
       if: success()
       uses: elgohr/Publish-Docker-Github-Action@v4
       with:
-        name: alfbo/test-marcus/testimage1
+        name: alfbo/test-marcus/testapi
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
         registry: ghcr.io
