@@ -1,0 +1,73 @@
+# This is a test workflow for the project developed by Marcus. It is intended to build, test, create containers and deploy those for a React and Express application
+
+name: Test script to build and deploy a React and Express application
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build_client:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [16.x]
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build and test using node version ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: './client/package-lock.json'
+    - run: npm install
+      working-directory: './client'
+    - run: npm ci
+      working-directory: './client'
+    - run: npm run build --if-present
+      working-directory: './client'
+#    - run: npm test
+#      working-directory: './client'
+      env:
+        CI: true
+    - name: Create docker container and push to GitHub repository
+      if: success()
+      uses: elgohr/Publish-Docker-Github-Action@v4
+      with:
+        name: alfbo/test-marcus/testclient
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+        registry: ghcr.io
+        workdir: './client'
+  build_api:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [16.x]
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build and test using node version ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: './api/package-lock.json'
+    - run: npm ci
+      working-directory: './api'
+    - run: npm run build --if-present
+      working-directory: './api'
+#    - run: npm test
+#      working-directory: './api'
+      env:
+        CI: true
+    - name: Create docker container and push to GitHub repository
+      if: success()
+      uses: elgohr/Publish-Docker-Github-Action@v4
+      with:
+        name: alfbo/test-marcus/testapi
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+        registry: ghcr.io
+        workdir: './api'
